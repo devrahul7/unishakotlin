@@ -9,9 +9,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -20,6 +22,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -29,35 +32,26 @@ import com.example.plantcare.model.ProductModel
 import com.example.plantcare.repository.ProductRepositoryImpl
 import com.example.plantcare.viewmodel.ProductViewModel
 
-class UpdateProductActivity : ComponentActivity() {
+class AddProductActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            UpdateProductScreen()
+            AddProductScreen()
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UpdateProductScreen() {
+fun AddProductScreen() {
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var plantName by remember { mutableStateOf("") }
+    var plantType by remember { mutableStateOf("") }
+    var price by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+
     val context = LocalContext.current
     val activity = context as? Activity
-
-    // Get plant data from intent
-    val plantId = activity?.intent?.getStringExtra("plant_id") ?: ""
-    val initialPlantName = activity?.intent?.getStringExtra("plant_name") ?: ""
-    val initialPlantType = activity?.intent?.getStringExtra("plant_type") ?: ""
-    val initialPrice = activity?.intent?.getStringExtra("plant_price") ?: ""
-    val initialDescription = activity?.intent?.getStringExtra("plant_description") ?: ""
-    val initialImageUrl = activity?.intent?.getStringExtra("plant_image_url") ?: ""
-
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-    var plantName by remember { mutableStateOf(initialPlantName) }
-    var plantType by remember { mutableStateOf(initialPlantType) }
-    var price by remember { mutableStateOf(initialPrice) }
-    var description by remember { mutableStateOf(initialDescription) }
-    var currentImageUrl by remember { mutableStateOf(initialImageUrl) }
 
     val repo = remember { ProductRepositoryImpl() }
     val viewModel = remember { ProductViewModel(repo) }
@@ -71,7 +65,7 @@ fun UpdateProductScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Update Plant") },
+                title = { Text("Add New Plant") },
                 navigationIcon = {
                     IconButton(onClick = {
                         activity?.finish()
@@ -113,39 +107,28 @@ fun UpdateProductScreen() {
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    when {
-                        selectedImageUri != null -> {
-                            AsyncImage(
-                                model = selectedImageUri,
-                                contentDescription = "Plant Image",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+                    selectedImageUri?.let { uri ->
+                        AsyncImage(
+                            model = uri,
+                            contentDescription = "Plant Image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } ?: run {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add Photo",
+                                modifier = Modifier.size(48.dp),
+                                tint = Color(0xFF4CAF50)
                             )
-                        }
-                        currentImageUrl.isNotEmpty() -> {
-                            AsyncImage(
-                                model = currentImageUrl,
-                                contentDescription = "Plant Image",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Tap to add plant photo",
+                                color = Color.Gray
                             )
-                        }
-                        else -> {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = "Add Photo",
-                                    modifier = Modifier.size(48.dp),
-                                    tint = Color(0xFF4CAF50)
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "Tap to change plant photo",
-                                    color = Color.Gray
-                                )
-                            }
                         }
                     }
                 }
@@ -156,6 +139,7 @@ fun UpdateProductScreen() {
                 value = plantName,
                 onValueChange = { plantName = it },
                 label = { Text("Plant Name") },
+                placeholder = { Text("e.g., Monstera Deliciosa") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Color(0xFF4CAF50),
@@ -168,6 +152,7 @@ fun UpdateProductScreen() {
                 value = plantType,
                 onValueChange = { plantType = it },
                 label = { Text("Plant Type/Category") },
+                placeholder = { Text("e.g., Indoor Plant, Succulent, Flowering") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Color(0xFF4CAF50),
@@ -180,6 +165,7 @@ fun UpdateProductScreen() {
                 value = price,
                 onValueChange = { price = it },
                 label = { Text("Price") },
+                placeholder = { Text("e.g., 25.99") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Color(0xFF4CAF50),
@@ -192,6 +178,7 @@ fun UpdateProductScreen() {
                 value = description,
                 onValueChange = { description = it },
                 label = { Text("Care Instructions & Description") },
+                placeholder = { Text("Describe care requirements, lighting needs, watering schedule...") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 4,
                 colors = OutlinedTextFieldDefaults.colors(
@@ -202,10 +189,15 @@ fun UpdateProductScreen() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Update Button
+            // Add Button
             Button(
                 onClick = {
+                    val imageUri = selectedImageUri
+
                     when {
+                        imageUri == null -> {
+                            Toast.makeText(context, "Please select a plant image", Toast.LENGTH_SHORT).show()
+                        }
                         plantName.isBlank() -> {
                             Toast.makeText(context, "Please enter plant name", Toast.LENGTH_SHORT).show()
                         }
@@ -225,21 +217,42 @@ fun UpdateProductScreen() {
                                 return@Button
                             }
 
-                            Toast.makeText(context, "Updating plant...", Toast.LENGTH_SHORT).show()
+                            // Show loading state
+                            Toast.makeText(context, "Adding plant...", Toast.LENGTH_SHORT).show()
 
-                            // Check if image was changed
-                            if (selectedImageUri != null) {
-                                // Upload new image first
-                                viewModel.uploadImage(context, selectedImageUri!!) { imageUrl ->
-                                    if (imageUrl != null) {
-                                        updatePlant(viewModel, plantId, plantName, priceValue, description, imageUrl, context, activity, plantType)
-                                    } else {
-                                        Toast.makeText(context, "Failed to upload image", Toast.LENGTH_SHORT).show()
+                            viewModel.uploadImage(context, imageUri) { imageUrl ->
+                                if (imageUrl != null) {
+                                    // Create ProductModel
+                                    val model = ProductModel(
+                                        "",
+                                        plantName,
+                                        priceValue,
+                                        description,
+                                        imageUrl
+                                    )
+
+                                    viewModel.addProduct(model) { success, message ->
+                                        if (success) {
+                                            // Prepare result data for dashboard
+                                            val resultIntent = Intent().apply {
+                                                putExtra("plant_name", plantName)
+                                                putExtra("plant_type", plantType)
+                                                putExtra("plant_description", description)
+                                                putExtra("plant_price", price)
+                                                putExtra("plant_image_url", imageUrl)
+                                            }
+
+                                            // Set result and finish
+                                            activity?.setResult(Activity.RESULT_OK, resultIntent)
+                                            Toast.makeText(context, "Plant added successfully!", Toast.LENGTH_SHORT).show()
+                                            activity?.finish()
+                                        } else {
+                                            Toast.makeText(context, "Failed to add plant: $message", Toast.LENGTH_LONG).show()
+                                        }
                                     }
+                                } else {
+                                    Toast.makeText(context, "Failed to upload image. Please try again.", Toast.LENGTH_SHORT).show()
                                 }
-                            } else {
-                                // Use existing image
-                                updatePlant(viewModel, plantId, plantName, priceValue, description, currentImageUrl, context, activity, plantType)
                             }
                         }
                     }
@@ -252,7 +265,7 @@ fun UpdateProductScreen() {
                 )
             ) {
                 Text(
-                    text = "Update Plant",
+                    text = "Add Plant to Garden",
                     color = Color.White
                 )
             }
@@ -271,47 +284,6 @@ fun UpdateProductScreen() {
             ) {
                 Text("Cancel")
             }
-        }
-    }
-}
-
-private fun updatePlant(
-    viewModel: ProductViewModel,
-    plantId: String,
-    plantName: String,
-    priceValue: Double,
-    description: String,
-    imageUrl: String,
-    context: android.content.Context,
-    activity: Activity?,
-    plantType: String
-) {
-    // Convert data to MutableMap as expected by your updateProduct method
-    val productData = mutableMapOf<String, Any?>(
-        "productName" to plantName,
-        "productPrice" to priceValue,
-        "productDescription" to description,
-        "productImageUrl" to imageUrl
-    )
-
-    // Call updateProduct with the correct parameters
-    viewModel.updateProduct(plantId, productData) { success, message ->
-        if (success) {
-            val resultIntent = Intent().apply {
-                putExtra("plant_id", plantId)
-                putExtra("plant_name", plantName)
-                putExtra("plant_type", plantType)
-                putExtra("plant_description", description)
-                putExtra("plant_price", priceValue.toString())
-                putExtra("plant_image_url", imageUrl)
-                putExtra("is_edit", true)
-            }
-
-            activity?.setResult(Activity.RESULT_OK, resultIntent)
-            Toast.makeText(context, "Plant updated successfully!", Toast.LENGTH_SHORT).show()
-            activity?.finish()
-        } else {
-            Toast.makeText(context, "Failed to update plant: $message", Toast.LENGTH_LONG).show()
         }
     }
 }
